@@ -32,6 +32,10 @@ loxilb:
     apiserver: 11111
     bgp: 179
     gobgp: 50051
+  #####
+  # All argument values for loxilb can be found in its documentation:
+  # https://github.com/loxilb-io/loxilb/blob/main/options/options.go
+  #####
   args:
   - --bgp
   - --egr-hooks
