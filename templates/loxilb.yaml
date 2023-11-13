@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ .Values.loxilb.name }}
+  namespace: {{ .Values.namespace }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Values.loxilb.name }}-app
+  template:
+    metadata:
+      name: {{ .Values.loxilb.name }}
+      labels:
+        app: {{ .Values.loxilb.name }}-app
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      {{- with .Values.loxilb.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 6 }}
+      {{- end }}
+      {{- with .Values.loxilb.affinity}}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: {{ .Values.loxilb.name }}
+        image: {{ .Values.loxilb.image }}
+        imagePullPolicy: {{ .Values.loxilb.imagePullPolicy }}
+        command: [ "/root/loxilb-io/loxilb/loxilb" ]
+        {{- with .Values.loxilb.args }}
+        args:
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
+        ports:
+        - containerPort: {{ .Values.loxilb.ports.apiserver }}
+        - containerPort: {{ .Values.loxilb.ports.bgp }}
+        - containerPort: {{ .Values.loxilb.ports.gobgp }}
+        securityContext:
+          privileged: true
+          capabilities:
+            add:
+              - SYS_ADMIN
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.loxilb.name }}-service
+  namespace: {{ .Values.namespace }}
+spec:
+  clusterIP: None
+  selector:
+    app: {{ .Values.loxilb.name }}-app
+  ports:
+  - name: {{ .Values.loxilb.name }}-api
+    port: {{ .Values.loxilb.ports.apiserver }}
+    targetPort: {{ .Values.loxilb.ports.apiserver }}
+    protocol: TCP
+  - name: {{ .Values.loxilb.name }}-bgp
+    port: {{ .Values.loxilb.ports.bgp }}
+    targetPort: {{ .Values.loxilb.ports.bgp }}
+    protocol: TCP
+  - name: {{ .Values.loxilb.name }}-gobgp
+    port: {{ .Values.loxilb.ports.gobgp }}
+    targetPort: {{ .Values.loxilb.ports.gobgp }}
+    protocol: TCP

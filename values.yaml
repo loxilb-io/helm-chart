@@ -1,0 +1,69 @@
+namespace: kube-system
+
+kubeLoxiLB:
+  name: kube-loxilb
+  image: ghcr.io/loxilb-io/kube-loxilb:latest
+  imagePullPolicy: Always
+  inClusterMode: true
+  #####
+  # All argument values for kube-loxilb can be found in its documentation:
+  # https://loxilb-io.github.io/loxilbdocs/kube-loxilb/
+  #####
+  args:
+    externalCIDR: 123.123.123.0/24
+    #externalCIDR6: 2001::1/128
+    #externalSecondaryCIDRs: 124.124.124.0/24,125.125.125.0/24
+    #externalSecondaryCIDRs6: 2001::1/64,2001:db8:acad:1::1/64
+    #loxiURL: http://192.168.80.10:11111
+    setLBMode: 2
+    setBGP: 64512
+    #listenBGPPort: 1791
+    setRoles: 0.0.0.0
+    monitor: false
+    #eBGPMultiHop: false
+    #extBGPPeers: 50.50.50.1:65101,51.51.51.1:65102
+    #setUniqueIP: false
+
+loxilb:
+  name: loxilb
+  image: ghcr.io/loxilb-io/loxilb:latest
+  imagePullPolicy: Always
+  ports:
+    apiserver: 11111
+    bgp: 179
+    gobgp: 50051
+  args:
+  - --bgp
+  - --egr-hooks
+  - --blacklist=cni[0-9a-z]|veth.|flannel.|cali.|tunl.|vxlan[.]calico
+  tolerations:
+  - key: "node-role.kubernetes.io/master"
+    operator: Exists
+  - key: "node-role.kubernetes.io/control-plane"
+    operator: Exists
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: "node-role.kubernetes.io/master"
+            operator: Exists
+          - key: "node-role.kubernetes.io/control-plane"
+            operator: Exists
+
+loxilbPeer:
+  name: loxilb-peer
+  image: ghcr.io/loxilb-io/loxilb:latest
+  ports:
+    apiserver: 11111
+    bgp: 179
+    gobgp: 50051
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: "node-role.kubernetes.io/master"
+            operator: DoesNotExist
+          - key: "node-role.kubernetes.io/control-plane"
+            operator: DoesNotExist

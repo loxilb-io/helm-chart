@@ -1,0 +1,155 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Values.kubeLoxiLB.name }}
+  namespace: {{ .Values.namespace }}
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: {{ .Values.kubeLoxiLB.name }}
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - nodes
+    verbs:
+      - get
+      - watch
+      - list
+      - patch
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+    verbs:
+      - get
+      - watch
+      - list
+      - patch
+  - apiGroups:
+      - ""
+    resources:
+      - endpoints
+      - services
+      - services/status
+    verbs:
+      - get
+      - watch
+      - list
+      - patch
+      - update
+  - apiGroups:
+      - discovery.k8s.io
+    resources:
+      - endpointslices
+    verbs:
+      - get
+      - watch
+      - list
+  - apiGroups:
+      - authentication.k8s.io
+    resources:
+      - tokenreviews
+    verbs:
+      - create
+  - apiGroups:
+      - authorization.k8s.io
+    resources:
+      - subjectaccessreviews
+    verbs:
+      - create
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: {{ .Values.kubeLoxiLB.name }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ .Values.kubeLoxiLB.name }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Values.kubeLoxiLB.name }}
+    namespace: {{ .Values.namespace }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.kubeLoxiLB.name }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: {{ .Values.kubeLoxiLB.name }}-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Values.kubeLoxiLB.name }}-app
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.kubeLoxiLB.name }}-app
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      tolerations:
+        - effect: NoSchedule
+          operator: Exists
+        # Mark the pod as a critical add-on for rescheduling.
+        - key: CriticalAddonsOnly
+          operator: Exists
+        - effect: NoExecute
+          operator: Exists
+      priorityClassName: system-node-critical
+      serviceAccountName: {{ .Values.kubeLoxiLB.name }}
+      terminationGracePeriodSeconds: 0
+      containers:
+      - name: {{ .Values.kubeLoxiLB.name }}
+        image: {{ .Values.kubeLoxiLB.image }}
+        imagePullPolicy: {{ .Values.kubeLoxiLB.imagePullPolicy }}
+        command:
+        - /bin/kube-loxilb
+        args:
+        - --externalCIDR={{ .Values.kubeLoxiLB.args.externalCIDR }}
+        {{- if .Values.kubeLoxiLB.args.externalSecondaryCIDRs }}
+        - --externalSecondaryCIDRs={{ .Values.kubeLoxiLB.externalSecondaryCIDRs }}
+        {{- end }}
+        {{- if .Values.kubeLoxiLB.args.monitor }}
+        - --monitor
+        {{- end }}
+        {{- if .Values.kubeLoxiLB.args.setUniqueIP }}
+        - --setUniqueIP
+        {{- end }}
+        {{- if .Values.kubeLoxiLB.args.setLBMode }}
+        - --setLBMode={{ .Values.kubeLoxiLB.args.setLBMode }}
+        {{- end }}
+        {{- if .Values.kubeLoxiLB.args.setBGP }}
+        - --setBGP={{ .Values.kubeLoxiLB.args.setBGP }}
+        {{- end }}
+        {{- if .Values.kubeLoxiLB.args.listenBGPPort }}
+        - --listenBGPPort={{ .Values.kubeLoxiLB.args.listenBGPPort }}
+        {{- end }}
+        {{- if .Values.kubeLoxiLB.args.setRoles }}
+        - --setRoles={{ .Values.kubeLoxiLB.args.setRoles }}
+        {{- end }}
+        {{- if .Values.kubeLoxiLB.args.extBGPPeers }}
+        - --extBGPPeers={{ .Values.kubeLoxiLB.args.extBGPPeers }}
+        {{- end }}
+        {{- if .Values.kubeLoxiLB.args.eBGPMultiHop }}
+        - --eBGPMultiHop
+        {{- end }}
+        {{- if .Values.kubeLoxiLB.args.loxiURL }}
+        - --loxiURL={{ .Values.kubeLoxiLB.args.loxiURL }}
+        {{- end }}
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "50Mi"
+          limits:
+            cpu: "100m"
+            memory: "50Mi"
+        securityContext:
+          privileged: true
+          capabilities:
+            add: ["NET_ADMIN", "NET_RAW"]
