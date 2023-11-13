@@ -41,8 +41,6 @@ loxilb:
   - --egr-hooks
   - --blacklist=cni[0-9a-z]|veth.|flannel.|cali.|tunl.|vxlan[.]calico
   tolerations:
-  - key: "node-role.kubernetes.io/master"
-    operator: Exists
   - key: "node-role.kubernetes.io/control-plane"
     operator: Exists
   affinity:
@@ -50,8 +48,6 @@ loxilb:
       requiredDuringSchedulingIgnoredDuringExecution:
         nodeSelectorTerms:
         - matchExpressions:
-          - key: "node-role.kubernetes.io/master"
-            operator: Exists
           - key: "node-role.kubernetes.io/control-plane"
             operator: Exists
 
