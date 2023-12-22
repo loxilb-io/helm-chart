@@ -25,7 +25,6 @@ kubeLoxiLB:
     #setUniqueIP: false
 
 loxilb:
-  name: loxilb
   image: ghcr.io/loxilb-io/loxilb:latest
   imagePullPolicy: Always
   ports:
@@ -52,7 +51,6 @@ loxilb:
             operator: Exists
 
 loxilbPeer:
-  name: loxilb-peer
   image: ghcr.io/loxilb-io/loxilb:latest
   ports:
     apiserver: 11111
